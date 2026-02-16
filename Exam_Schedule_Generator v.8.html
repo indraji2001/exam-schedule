@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Schedule Generator v.6</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #1e3c72; color: white; padding: 20px; text-align: center; }
+        .input-section { padding: 30px; }
+        .step-box { background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; }
+        .step-box.active { border-color: #1e3c72; background: #e3f2fd; }
+        .step-number { position: absolute; top: -15px; left: 20px; background: #1e3c72; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn { background: #1e3c72; color: white; border: none; padding: 12px 30px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px; transition: background 0.2s; }
+        .btn:hover { background: #2a5298; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #000; }
+        .hidden { display: none !important; }
+        .preview-section { padding: 30px; display: none; }
+        .preview-section.active { display: block; }
+        .word-preview { background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow-x: auto; }
+        .info-box { background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .paper-checkboxes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .paper-checkbox { display: flex; align-items: center; gap: 5px; background: #f8f9fa; padding: 5px 10px; border-radius: 4px; border: 1px solid #ddd; }
+        .college-checkbox { display: flex; align-items: center; gap: 8px; background: #e3f2fd; padding: 10px; border-radius: 4px; border: 1px solid #90caf9; cursor: pointer; flex-direction: column; align-items: flex-start; }
+        .college-checkbox.selected { background: #1e3c72; color: white; border-color: #1e3c72; }
+        .college-header { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .college-stats { font-size: 0.85em; margin-top: 5px; padding-left: 24px; color: #555; }
+        .college-checkbox.selected .college-stats { color: #e0e0e0; }
+        .colleges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin-top: 10px; }
+        .stats-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 15px 0; }
+        .stat-item { background: white; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid #1e3c72; }
+        .stat-value { font-size: 1.8em; font-weight: bold; color: #1e3c72; }
+        .candidature-box { background: #e8f5e9; border: 2px solid #4caf50; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        .candidature-number { font-size: 3em; font-weight: bold; color: #2e7d32; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+        .tab { padding: 10px 20px; cursor: pointer; background: #f8f9fa; border: none; border-radius: 5px 5px 0 0; }
+        .tab.active { background: #1e3c72; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .backlog-row { display: grid; grid-template-columns: 1fr 2fr auto; gap: 15px; margin-bottom: 15px; background: white; padding: 15px; border-radius: 5px; border: 1px solid #ddd; }
+        .add-btn { background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 4px; cursor: pointer; }
+        .remove-btn { background: #dc3545; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; }
+        .backlog-roll-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; min-height: 60px; }
+        .file-upload { border: 2px dashed #1e3c72; padding: 20px; text-align: center; border-radius: 8px; background: #f8f9fa; cursor: pointer; }
+        .file-upload:hover { background: #e3f2fd; }
+        .file-upload input { display: none; }
+        .radio-group { display: flex; gap: 15px; margin-top: 10px; }
+        .radio-option { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 8px 15px; background: white; border-radius: 4px; border: 1px solid #ddd; }
+        .radio-option.selected { background: #1e3c72; color: white; border-color: #1e3c72; }
+        .column-map { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #2196f3; }
+        .roll-hint { font-size: 0.8em; color: #666; margin-top: 4px; }
+
+        /* Calendar Styles */
+        .date-input-wrapper { position: relative; }
+        .calendar-popup { position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; padding: 15px; display: none; width: 320px; }
+        .calendar-popup.active { display: block; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; background: #1e3c72; color: white; border-radius: 4px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .calendar-day-header { text-align: center; font-weight: bold; font-size: 0.8em; padding: 5px; background: #f0f0f0; }
+        .calendar-day { text-align: center; padding: 8px; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+        .calendar-day:hover { background: #e3f2fd; }
+        .calendar-day.selected { background: #1e3c72; color: white; }
+        .calendar-day.other-month { color: #ccc; }
+        .selected-dates { margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 4px; min-height: 40px; }
+        .date-tag { display: inline-block; background: #1e3c72; color: white; padding: 4px 10px; border-radius: 15px; margin: 2px; font-size: 0.85em; }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Exam Schedule Generator</h2>
+            <p>v.6 - Optimized Excel & Manual Entry</p>
+        </div>
+
+        <div class="input-section" id="inputSection">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('excel')">📁 Excel Import</div>
+                <div class="tab" onclick="switchTab('manual')">✏️ Manual Entry</div>
+            </div>
+
+            <!-- EXCEL IMPORT TAB - WITHOUT BACKLOG SECTION -->
+            <div id="excelTab" class="tab-content active">
+
+                <!-- STEP 1: Upload -->
+                <div class="step-box active" id="step1">
+                    <div class="step-number">1</div>
+                    <h3>Upload Excel File</h3>
+                    <div class="form-group">
+                        <div class="file-upload" onclick="document.getElementById('excelFile').click()">
+                            <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="handleExcelUpload(event)">
+                            <div style="font-size: 2em; color: #1e3c72;">📊</div>
+                            <div style="margin-top: 10px; font-weight: 600;">Click to upload Excel file</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Columns: Roll Number, Subject Code, Paper Code</div>
+                        </div>
+                    </div>
+                    <div id="columnMapInfo" class="column-map hidden"></div>
+                </div>
+
+                <!-- STEP 2: Select Subject -->
+                <div class="step-box hidden" id="step2">
+                    <div class="step-number">2</div>
+                    <h3>Select Subject Type</h3>
+                    <div class="form-group">
+                        <label>Select Subject from Excel</label>
+                        <select id="subjectTypeSelect" onchange="onSubjectSelect()">
+                            <option value="">-- Select Subject Code --</option>
+                        </select>
+                    </div>
+                    <div id="subjectInfo" class="hidden">
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; color: #155724;">
+                            <strong>Selected:</strong> <span id="selectedSubjectDisplay"></span><br>
+                            <strong>Full Name:</strong> <span id="selectedSubjectName"></span>
+                        </div>
+                        <button class="btn btn-success" onclick="loadSubjectData()">Load Data for This Subject</button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Review Data -->
+                <div class="step-box hidden" id="step3">
+                    <div class="step-number">3</div>
+                    <h3>Review Detected Data</h3>
+
+                    <div class="stats-box">
+                        <div class="stat-item">
+                            <div class="stat-value" id="statTotalStudents">0</div>
+                            <div>Total Students</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statTotalPapers">0</div>
+                            <div>Unique Papers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statTotalColleges">0</div>
+                            <div>Colleges Detected</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Detected Paper Codes:</label>
+                        <div id="detectedPapers" class="paper-checkboxes"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select Colleges to Include (with student counts):</label>
+                        <div id="collegesSelection" class="colleges-grid"></div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" class="btn btn-warning" onclick="toggleAllColleges(true)">Select All</button>
+                            <button type="button" class="btn btn-warning" onclick="toggleAllColleges(false)">Deselect All</button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="calculateCandidature()">Calculate Candidature</button>
+                </div>
+
+                <!-- STEP 4: Candidature - NO BACKLOG FOR EXCEL -->
+                <div class="step-box hidden" id="step4">
+                    <div class="step-number">4</div>
+                    <h3>Candidature Calculation</h3>
+
+                    <div class="candidature-box">
+                        <div class="candidature-number" id="totalCandidature">0</div>
+                        <div>Total Candidature</div>
+                        <div style="margin-top: 10px; font-size: 0.9em;" id="candidatureBreakdown"></div>
+                    </div>
+
+                    <div class="info-box" style="margin-top: 20px;">
+                        <strong>ℹ️ Note:</strong> Backlog students are automatically handled from Excel data. 
+                        Each student's paper assignments are read directly from the Excel file.
+                    </div>
+
+                    <button class="btn btn-success" onclick="proceedToDates()" style="margin-top: 20px;">Proceed to Enter Dates</button>
+                </div>
+
+            </div>
+
+            <!-- MANUAL ENTRY TAB - WITH BACKLOG FUNCTIONALITY FROM V.1 -->
+            <div id="manualTab" class="tab-content">
+                <div class="info-box" style="margin-bottom: 20px;">
+                    <strong>Instructions:</strong> Enter paper codes and roll numbers. Use the "Custom (Backlog)" option 
+                    to specify which papers backlog students need to appear for.
+                </div>
+
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Paper Codes (one per line)</label>
+                        <textarea id="paperCodes" rows="4">CEMMJ-MC-08
+CEMMJ-MC-09
+CEMMJ-MC-10
+CEMMJ-MC-11</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Roll Numbers (one per line or comma-separated)</label>
+                        <textarea id="rollNumbers" rows="6">0623CEMMJ0008
+0623CEMMJ0016
+1223CEMMJ0006
+1223CEMMJ0015</textarea>
+                    </div>
+                </div>
+
+                <!-- BACKLOG SECTION FOR MANUAL ENTRY - COPIED FROM V.1 -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>All candidates take ALL papers?</label>
+                    <div class="radio-group" id="paperOptionGroup">
+                        <label class="radio-option selected" id="optYes" onclick="setPaperOption('yes')">
+                            <input type="radio" name="allPapers" value="yes" checked> Yes (All Regular)
+                        </label>
+                        <label class="radio-option" id="optNo" onclick="setPaperOption('no')">
+                            <input type="radio" name="allPapers" value="no"> No (Custom - for backlog students)
+                        </label>
+                    </div>
+                </div>
+
+                <div id="customMapping" class="hidden" style="margin-bottom: 20px; padding: 20px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <div style="margin-bottom: 15px; font-weight: bold; color: #856404;">Backlog Students - Select Papers</div>
+                    <div id="mappingContainer"></div>
+                    <button type="button" class="add-btn" onclick="addBacklogStudent()">+ Add Backlog Student</button>
+                    <p style="margin-top: 10px; font-size: 0.85em; color: #856404;">
+                        * Enter roll number(s) and tick the specific papers for backlog students<br>
+                        * You can enter multiple roll numbers separated by comma or one per line<br>
+                        * Students not listed here will take ALL papers (regular candidates)
+                    </p>
+                </div>
+
+                <button class="btn" onclick="proceedToDates()">Proceed to Enter Dates</button>
+            </div>
+
+            <!-- COMMON: Dates and Generate (Step 5) -->
+            <div class="step-box" id="stepDates" style="margin-top: 20px;">
+                <div class="step-number">5</div>
+                <h3>Enter Exam Details</h3>
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Academic Year</label>
+                        <input type="text" id="academicYear" value="2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject (Auto-populated)</label>
+                        <input type="text" id="subjectName" value="CHEMISTRY" style="background: #e9ecef;">
+                    </div>
+                    <div class="form-group">
+                        <label>Venue</label>
+                        <input type="text" id="venueName" value="Malda College, Malda">
+                    </div>
+                    <div class="form-group">
+                        <label>Semester</label>
+                        <select id="semester">
+                            <option value="I">I</option><option value="II">II</option>
+                            <option value="III" selected>III</option><option value="IV">IV</option>
+                            <option value="V">V</option><option value="VI">VI</option>
+                            <option value="VII">VII</option><option value="VIII">VIII</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Calendar Date Selection -->
+                <div class="form-group">
+                    <label>Exam Dates (Click calendar to select)</label>
+                    <div class="date-input-wrapper">
+                        <input type="hidden" id="examDatesHidden">
+                        <textarea id="examDates" rows="3" placeholder="Click 'Open Calendar' to select dates"></textarea>
+                        <button type="button" class="btn" onclick="toggleCalendar('exam')" style="margin-top: 10px;">📅 Open Calendar</button>
+
+                        <div id="calendarPopup" class="calendar-popup">
+                            <div class="calendar-header">
+                                <button onclick="changeMonth(-1)" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">◀</button>
+                                <span id="currentMonthYear" style="font-weight: bold;"></span>
+                                <button onclick="changeMonth(1)" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">▶</button>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid"></div>
+                            <div style="margin-top: 10px; text-align: center;">
+                                <button class="btn" onclick="confirmDateSelection()">Confirm Selection</button>
+                                <button class="btn btn-danger" onclick="toggleCalendar()">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="selected-dates" id="selectedDatesDisplay">
+                        <em>No dates selected</em>
+                    </div>
+                </div>
+
+                <!-- Sample Preparation Dates -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Sample Preparation Dates (Click calendar to select)</label>
+                    <div class="date-input-wrapper">
+                        <input type="hidden" id="samplePrepDatesHidden">
+                        <textarea id="samplePrepDates" rows="2" placeholder="Click 'Open Calendar' to select dates" readonly style="background: #f8f9fa;"></textarea>
+                        <button type="button" class="btn" onclick="toggleCalendar('samplePrep')" style="margin-top: 10px;">📅 Open Calendar</button>
+
+                        <div id="samplePrepCalendarPopup" class="calendar-popup">
+                            <div class="calendar-header">
+                                <button onclick="changeMonth(-1, 'samplePrep')" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">◀</button>
+                                <span id="samplePrepCurrentMonthYear" style="font-weight: bold;"></span>
+                                <button onclick="changeMonth(1, 'samplePrep')" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">▶</button>
+                            </div>
+                            <div class="calendar-grid" id="samplePrepCalendarGrid"></div>
+                            <div style="margin-top: 10px; text-align: center;">
+                                <button class="btn" onclick="confirmDateSelection('samplePrep')">Confirm Selection</button>
+                                <button class="btn btn-danger" onclick="toggleCalendar('samplePrep')">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="selected-dates" id="samplePrepSelectedDatesDisplay">
+                        <em>No dates selected</em>
+                    </div>
+                </div>
+
+                <!-- Copy Evaluation Dates -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Copy Evaluation Dates (Click calendar to select)</label>
+                    <div class="date-input-wrapper">
+                        <input type="hidden" id="copyEvalDatesHidden">
+                        <textarea id="copyEvalDates" rows="2" placeholder="Click 'Open Calendar' to select dates" readonly style="background: #f8f9fa;"></textarea>
+                        <button type="button" class="btn" onclick="toggleCalendar('copyEval')" style="margin-top: 10px;">📅 Open Calendar</button>
+
+                        <div id="copyEvalCalendarPopup" class="calendar-popup">
+                            <div class="calendar-header">
+                                <button onclick="changeMonth(-1, 'copyEval')" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">◀</button>
+                                <span id="copyEvalCurrentMonthYear" style="font-weight: bold;"></span>
+                                <button onclick="changeMonth(1, 'copyEval')" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2em;">▶</button>
+                            </div>
+                            <div class="calendar-grid" id="copyEvalCalendarGrid"></div>
+                            <div style="margin-top: 10px; text-align: center;">
+                                <button class="btn" onclick="confirmDateSelection('copyEval')">Confirm Selection</button>
+                                <button class="btn btn-danger" onclick="toggleCalendar('copyEval')">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="selected-dates" id="copyEvalSelectedDatesDisplay">
+                        <em>No dates selected</em>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button class="btn btn-success" onclick="generateSchedule()">Generate Schedule</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="previewSection" class="preview-section">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="btn btn-success" onclick="exportToWord()">Export to Word</button>
+                <button class="btn btn-danger" onclick="resetForm()">Start New</button>
+            </div>
+            <div id="scheduleOutput" class="word-preview"></div>
+        </div>
+
+        <div class="developer-footer" style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 1px solid #ddd; color: #666;">
+            Developed by Dr. Indrajit Chakraborty, Malda College | v.6
+        </div>
+    </div>
+
+    <script>
+        // Data storage
+        let rawExcelData = [];
+        let filteredData = [];
+        let currentSubject = '';
+        let currentSubjectName = '';
+        let papersList = [];
+        let collegesList = [];
+        let studentsList = [];
+        let collegeStudentCounts = {};
+        let scheduleData = null;
+        let columnMapping = {};
+        let calendarDate = new Date();
+        let samplePrepCalendarDate = new Date();
+        let copyEvalCalendarDate = new Date();
+        let selectedDates = [];
+        let selectedSamplePrepDates = [];
+        let selectedCopyEvalDates = [];
+        let currentCalendarType = 'exam';
+
+        // College map
+        const collegeMap = {
+            '01': 'Shree Agrasen Mahavidyalaya', 
+            '02': 'Balurghat College', 
+            '06': 'Chanchal College',
+            '07': 'Dewan Abdul Gani College', 
+            '08': 'Dr. Meghnad Saha College',
+            '10': 'Gangarampur College', 
+            '12': 'Gour Mahavidyalaya',
+            '18': 'Kaliachak College', 
+            '19': 'Kaliyaganj College',
+            '20': 'Malda College', 
+            '25': 'Raiganj S N Mahavidyalaya',
+            '48': 'Govt. General Degree College at Kushmandi', 
+            '52': 'S. B. S. Government College, Hili'
+        };
+
+        const subjectMap = {
+            'CEMMJ': 'CHEMISTRY (MAJOR)', 'BOTMJ': 'BOTANY (MAJOR)', 'ZOOMJ': 'ZOOLOGY (MAJOR)',
+            'PHYMJ': 'PHYSICS (MAJOR)', 'MATMJ': 'MATHEMATICS (MAJOR)', 'ENGMJ': 'ENGLISH (MAJOR)',
+            'HISMJ': 'HISTORY (MAJOR)', 'GEOMJ': 'GEOGRAPHY (MAJOR)', 'ECOMJ': 'ECONOMICS (MAJOR)',
+            'PHIMJ': 'PHILOSOPHY (MAJOR)', 'POLMJ': 'POLITICAL SCIENCE (MAJOR)', 'SANMJ': 'SANSKRIT (MAJOR)',
+            'BENMJ': 'BENGALI (MAJOR)', 'CEMGE': 'CHEMISTRY (GENERAL)', 'BOTGE': 'BOTANY (GENERAL)',
+            'ZOOGE': 'ZOOLOGY (GENERAL)', 'PHYGE': 'PHYSICS (GENERAL)', 'MATGE': 'MATHEMATICS (GENERAL)'
+        };
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            if (tab === 'excel') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('excelTab').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('manualTab').classList.add('active');
+            }
+        }
+
+        function detectColumns(firstRow) {
+            const columns = Object.keys(firstRow);
+            const mapping = {};
+
+            const rollPatterns = ['roll', 'rollno', 'roll_no', 'rollnumber', 'roll_number'];
+            for (let col of columns) {
+                const lowerCol = col.toLowerCase().replace(/[\s_]/g, '');
+                if (rollPatterns.some(p => lowerCol.includes(p))) {
+                    mapping.roll = col;
+                    break;
+                }
+            }
+
+            const subjPatterns = ['subject', 'subj', 'subjectcode', 'subjcode'];
+            for (let col of columns) {
+                const lowerCol = col.toLowerCase().replace(/[\s_]/g, '');
+                if (subjPatterns.some(p => lowerCol.includes(p)) && !lowerCol.includes('paper')) {
+                    mapping.subject = col;
+                    break;
+                }
+            }
+
+            const paperPatterns = ['paper', 'papercode', 'paper_code', 'paperno'];
+            for (let col of columns) {
+                const lowerCol = col.toLowerCase().replace(/[\s_]/g, '');
+                if (paperPatterns.some(p => lowerCol.includes(p))) {
+                    mapping.paper = col;
+                    break;
+                }
+            }
+
+            return mapping;
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) {
+                        alert('Excel file is empty!');
+                        return;
+                    }
+
+                    columnMapping = detectColumns(jsonData[0]);
+
+                    const mapInfo = document.getElementById('columnMapInfo');
+                    mapInfo.classList.remove('hidden');
+                    mapInfo.innerHTML = `
+                        <strong>Auto-detected Columns:</strong><br>
+                        Roll Number: <code>${columnMapping.roll || 'NOT FOUND'}</code><br>
+                        Subject Code: <code>${columnMapping.subject || 'NOT FOUND'}</code><br>
+                        Paper Code: <code>${columnMapping.paper || 'NOT FOUND'}</code>
+                    `;
+
+                    if (!columnMapping.roll || !columnMapping.subject || !columnMapping.paper) {
+                        alert('Could not detect all required columns! Please check your Excel format.');
+                        return;
+                    }
+
+                    rawExcelData = jsonData;
+
+                    const subjects = new Set();
+                    jsonData.forEach(row => {
+                        const subj = String(row[columnMapping.subject] || '').trim();
+                        if (subj) subjects.add(subj);
+                    });
+
+                    const subjectArray = Array.from(subjects).sort();
+
+                    const select = document.getElementById('subjectTypeSelect');
+                    select.innerHTML = '<option value="">-- Select Subject Code --</option>';
+                    subjectArray.forEach(code => {
+                        const fullName = subjectMap[code] || code;
+                        const option = document.createElement('option');
+                        option.value = code;
+                        option.textContent = `${code} - ${fullName}`;
+                        select.appendChild(option);
+                    });
+
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.remove('hidden');
+                    document.getElementById('step2').classList.add('active');
+
+                    alert(`Upload successful! Found ${jsonData.length} rows and ${subjectArray.length} subject(s).`);
+
+                } catch (error) {
+                    alert('Error reading Excel: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function onSubjectSelect() {
+            const select = document.getElementById('subjectTypeSelect');
+            currentSubject = select.value;
+
+            if (!currentSubject) {
+                document.getElementById('subjectInfo').classList.add('hidden');
+                return;
+            }
+
+            currentSubjectName = subjectMap[currentSubject] || currentSubject;
+            document.getElementById('selectedSubjectDisplay').textContent = currentSubject;
+            document.getElementById('selectedSubjectName').textContent = currentSubjectName;
+            document.getElementById('subjectInfo').classList.remove('hidden');
+            document.getElementById('subjectName').value = currentSubjectName;
+        }
+
+        function loadSubjectData() {
+            if (!currentSubject) {
+                alert('Please select a subject first!');
+                return;
+            }
+
+            filteredData = [];
+            rawExcelData.forEach(row => {
+                const subj = String(row[columnMapping.subject] || '').trim();
+                if (subj === currentSubject) {
+                    filteredData.push(row);
+                }
+            });
+
+            if (filteredData.length === 0) {
+                alert('No data found for selected subject!');
+                return;
+            }
+
+            const paperSet = new Set();
+            const studentSet = new Set();
+            const collegeSet = new Map();
+            collegeStudentCounts = {};
+
+            filteredData.forEach(row => {
+                const roll = String(row[columnMapping.roll] || '').trim();
+                const paperCode = String(row[columnMapping.paper] || '').trim();
+                const subjCode = String(row[columnMapping.subject] || '').trim();
+
+                if (roll && paperCode) {
+                    const fullPaper = `${subjCode}-${paperCode}`;
+                    paperSet.add(fullPaper);
+
+                    const cleanRoll = roll.toUpperCase().replace(/\s/g, '');
+
+                    if (!studentSet.has(cleanRoll)) {
+                        studentSet.add(cleanRoll);
+
+                        const collegeCode = cleanRoll.substring(0, 2);
+                        if (!collegeStudentCounts[collegeCode]) {
+                            collegeStudentCounts[collegeCode] = 0;
+                        }
+                        collegeStudentCounts[collegeCode]++;
+
+                        const collegeName = collegeMap[collegeCode] || `College ${collegeCode}`;
+                        collegeSet.set(collegeCode, collegeName);
+                    }
+                }
+            });
+
+            papersList = Array.from(paperSet).sort((a, b) => {
+                // Extract numbers from paper codes for proper numerical sorting
+                const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+                const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+                return numA - numB;
+            });
+            collegesList = Array.from(collegeSet.entries()).map(([code, name]) => ({code, name}));
+            studentsList = Array.from(studentSet);
+
+            document.getElementById('statTotalStudents').textContent = studentsList.length;
+            document.getElementById('statTotalPapers').textContent = papersList.length;
+            document.getElementById('statTotalColleges').textContent = collegesList.length;
+
+            const papersContainer = document.getElementById('detectedPapers');
+            papersContainer.innerHTML = '';
+            papersList.forEach(paper => {
+                papersContainer.innerHTML += `<div class="paper-checkbox">📄 ${paper}</div>`;
+            });
+
+            const collegesContainer = document.getElementById('collegesSelection');
+            collegesContainer.innerHTML = '';
+            collegesList.forEach(college => {
+                const studentCount = collegeStudentCounts[college.code] || 0;
+                collegesContainer.innerHTML += `
+                    <label class="college-checkbox selected">
+                        <div class="college-header">
+                            <input type="checkbox" value="${college.code}" checked onchange="this.parentElement.parentElement.classList.toggle('selected', this.checked)">
+                            <span><strong>${college.name}</strong> (${college.code})</span>
+                        </div>
+                        <div class="college-stats">
+                            👥 Students: <strong>${studentCount}</strong> | Papers: ${papersList.length} | Candidature: ${studentCount * papersList.length}
+                        </div>
+                    </label>`;
+            });
+
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step3').classList.remove('hidden');
+            document.getElementById('step3').classList.add('active');
+        }
+
+        function toggleAllColleges(select) {
+            document.querySelectorAll('#collegesSelection input').forEach(cb => {
+                cb.checked = select;
+                cb.closest('.college-checkbox').classList.toggle('selected', select);
+            });
+        }
+
+        function calculateCandidature() {
+            const selectedColleges = Array.from(document.querySelectorAll('#collegesSelection input:checked')).map(cb => cb.value);
+
+            if (selectedColleges.length === 0) {
+                alert('Please select at least one college!');
+                return;
+            }
+
+            let regularCount = 0;
+            selectedColleges.forEach(code => {
+                regularCount += collegeStudentCounts[code] || 0;
+            });
+
+            const paperCount = papersList.length;
+            const totalCandidature = regularCount * paperCount;
+
+            document.getElementById('totalCandidature').textContent = totalCandidature;
+            document.getElementById('candidatureBreakdown').innerHTML = 
+                `Regular Candidates: <strong>${regularCount}</strong> × Papers: <strong>${paperCount}</strong> = <strong>${totalCandidature}</strong>`;
+
+            window.regularCandidates = regularCount;
+            window.totalPapers = paperCount;
+
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step4').classList.remove('hidden');
+            document.getElementById('step4').classList.add('active');
+        }
+
+        // BACKLOG FUNCTIONS FOR MANUAL ENTRY - FROM V.1
+        function setPaperOption(val) {
+            document.querySelectorAll('#paperOptionGroup .radio-option').forEach(el => el.classList.remove('selected'));
+            if (val === 'yes') {
+                document.getElementById('optYes').classList.add('selected');
+                document.getElementById('customMapping').classList.add('hidden');
+            } else {
+                document.getElementById('optNo').classList.add('selected');
+                document.getElementById('customMapping').classList.remove('hidden');
+                if (document.getElementById('mappingContainer').children.length === 0) {
+                    addBacklogStudent();
+                }
+            }
+        }
+
+        function getPaperCodes() {
+            const paperText = document.getElementById('paperCodes').value.trim();
+            if (!paperText) return [];
+            return paperText.split('\n').map(p => p.trim()).filter(p => p);
+        }
+
+        function addBacklogStudent() {
+            const papers = getPaperCodes();
+            const container = document.getElementById('mappingContainer');
+
+            const div = document.createElement('div');
+            div.className = 'backlog-row';
+
+            const rollDiv = document.createElement('div');
+            const rollLabel = document.createElement('label');
+            rollLabel.style.cssText = 'font-size: 0.85em; color: #666; margin-bottom: 4px; display: block;';
+            rollLabel.textContent = 'Roll Number(s)';
+
+            const rollTextarea = document.createElement('textarea');
+            rollTextarea.className = 'backlog-roll-input';
+            rollTextarea.placeholder = 'e.g., 1222CEMMJ0014, 1822CEMMJ0014';
+
+            const rollHint = document.createElement('div');
+            rollHint.className = 'roll-hint';
+            rollHint.textContent = 'Separate by comma or new line';
+
+            rollDiv.appendChild(rollLabel);
+            rollDiv.appendChild(rollTextarea);
+            rollDiv.appendChild(rollHint);
+
+            const papersDiv = document.createElement('div');
+            const papersLabel = document.createElement('label');
+            papersLabel.style.cssText = 'font-size: 0.85em; color: #666; margin-bottom: 4px; display: block;';
+            papersLabel.textContent = 'Select Papers';
+
+            const checkboxesDiv = document.createElement('div');
+            checkboxesDiv.className = 'paper-checkboxes';
+
+            papers.forEach(function(paper) {
+                const label = document.createElement('label');
+                label.className = 'paper-checkbox';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = paper;
+                checkbox.className = 'paper-check';
+
+                const span = document.createElement('span');
+                span.textContent = paper;
+
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                checkboxesDiv.appendChild(label);
+            });
+
+            papersDiv.appendChild(papersLabel);
+            papersDiv.appendChild(checkboxesDiv);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = 'Remove';
+            removeBtn.style.marginTop = '20px';
+            removeBtn.onclick = function() {
+                div.remove();
+            };
+
+            div.appendChild(rollDiv);
+            div.appendChild(papersDiv);
+            div.appendChild(removeBtn);
+
+            container.appendChild(div);
+        }
+
+        function proceedToDates() {
+            document.getElementById('stepDates').scrollIntoView({behavior: 'smooth'});
+        }
+
+        // CALENDAR FUNCTIONS
+        function toggleCalendar(type) {
+            currentCalendarType = type || 'exam';
+
+            if (type === 'samplePrep') {
+                const popup = document.getElementById('samplePrepCalendarPopup');
+                popup.classList.toggle('active');
+                if (popup.classList.contains('active')) {
+                    renderCalendar('samplePrep');
+                }
+            } else if (type === 'copyEval') {
+                const popup = document.getElementById('copyEvalCalendarPopup');
+                popup.classList.toggle('active');
+                if (popup.classList.contains('active')) {
+                    renderCalendar('copyEval');
+                }
+            } else {
+                const popup = document.getElementById('calendarPopup');
+                popup.classList.toggle('active');
+                if (popup.classList.contains('active')) {
+                    renderCalendar('exam');
+                }
+            }
+        }
+
+        function renderCalendar(type) {
+            type = type || currentCalendarType;
+
+            let dateObj, year, month, monthYearId, gridId, selectedDatesArr;
+
+            if (type === 'samplePrep') {
+                dateObj = samplePrepCalendarDate;
+                year = dateObj.getFullYear();
+                month = dateObj.getMonth();
+                monthYearId = 'samplePrepCurrentMonthYear';
+                gridId = 'samplePrepCalendarGrid';
+                selectedDatesArr = selectedSamplePrepDates;
+            } else if (type === 'copyEval') {
+                dateObj = copyEvalCalendarDate;
+                year = dateObj.getFullYear();
+                month = dateObj.getMonth();
+                monthYearId = 'copyEvalCurrentMonthYear';
+                gridId = 'copyEvalCalendarGrid';
+                selectedDatesArr = selectedCopyEvalDates;
+            } else {
+                dateObj = calendarDate;
+                year = dateObj.getFullYear();
+                month = dateObj.getMonth();
+                monthYearId = 'currentMonthYear';
+                gridId = 'calendarGrid';
+                selectedDatesArr = selectedDates;
+            }
+
+            document.getElementById(monthYearId).textContent = 
+                new Date(year, month).toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = '';
+
+            const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayHeaders.forEach(day => {
+                const div = document.createElement('div');
+                div.className = 'calendar-day-header';
+                div.textContent = day;
+                grid.appendChild(div);
+            });
+
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day other-month';
+                div.textContent = daysInPrevMonth - i;
+                grid.appendChild(div);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day';
+                div.textContent = day;
+                const dateStr = `${String(day).padStart(2, '0')}.${String(month + 1).padStart(2, '0')}.${year}`;
+
+                if (selectedDatesArr.includes(dateStr)) {
+                    div.classList.add('selected');
+                }
+                div.onclick = function() {
+                    toggleDateSelection(dateStr, this, type);
+                };
+                grid.appendChild(div);
+            }
+
+            const totalCells = grid.children.length - 7;
+            const remainingCells = 35 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day other-month';
+                div.textContent = day;
+                grid.appendChild(div);
+            }
+        }
+
+        function changeMonth(delta, type) {
+            type = type || currentCalendarType;
+
+            if (type === 'samplePrep') {
+                samplePrepCalendarDate.setMonth(samplePrepCalendarDate.getMonth() + delta);
+            } else if (type === 'copyEval') {
+                copyEvalCalendarDate.setMonth(copyEvalCalendarDate.getMonth() + delta);
+            } else {
+                calendarDate.setMonth(calendarDate.getMonth() + delta);
+            }
+            renderCalendar(type);
+        }
+
+        function toggleDateSelection(dateStr, element, type) {
+            type = type || currentCalendarType;
+
+            let selectedDatesArr, displayId, textareaId, hiddenId;
+
+            if (type === 'samplePrep') {
+                selectedDatesArr = selectedSamplePrepDates;
+                displayId = 'samplePrepSelectedDatesDisplay';
+                textareaId = 'samplePrepDates';
+                hiddenId = 'samplePrepDatesHidden';
+            } else if (type === 'copyEval') {
+                selectedDatesArr = selectedCopyEvalDates;
+                displayId = 'copyEvalSelectedDatesDisplay';
+                textareaId = 'copyEvalDates';
+                hiddenId = 'copyEvalDatesHidden';
+            } else {
+                selectedDatesArr = selectedDates;
+                displayId = 'selectedDatesDisplay';
+                textareaId = 'examDates';
+                hiddenId = 'examDatesHidden';
+            }
+
+            const index = selectedDatesArr.indexOf(dateStr);
+            if (index > -1) {
+                selectedDatesArr.splice(index, 1);
+                element.classList.remove('selected');
+            } else {
+                selectedDatesArr.push(dateStr);
+                selectedDatesArr.sort((a, b) => {
+                    const [d1, m1, y1] = a.split('.').map(Number);
+                    const [d2, m2, y2] = b.split('.').map(Number);
+                    return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
+                });
+                element.classList.add('selected');
+            }
+
+            // Update display
+            const display = document.getElementById(displayId);
+            if (selectedDatesArr.length === 0) {
+                display.innerHTML = '<em>No dates selected</em>';
+            } else {
+                display.innerHTML = selectedDatesArr.map(date => 
+                    `<span class="date-tag">${date}</span>`
+                ).join('');
+            }
+
+            // Update textarea and hidden input
+            const datesText = selectedDatesArr.join('\n');
+            document.getElementById(textareaId).value = datesText;
+            document.getElementById(hiddenId).value = datesText;
+        }
+
+        function updateSelectedDatesDisplay() {
+            const display = document.getElementById('selectedDatesDisplay');
+            if (selectedDates.length === 0) {
+                display.innerHTML = '<em>No dates selected</em>';
+            } else {
+                display.innerHTML = selectedDates.map(date => 
+                    `<span class="date-tag">${date}</span>`
+                ).join('');
+            }
+        }
+
+        function confirmDateSelection(type) {
+            type = type || currentCalendarType;
+
+            if (type === 'samplePrep') {
+                const datesText = selectedSamplePrepDates.join('\n');
+                document.getElementById('samplePrepDatesHidden').value = datesText;
+                document.getElementById('samplePrepDates').value = datesText;
+                toggleCalendar('samplePrep');
+            } else if (type === 'copyEval') {
+                const datesText = selectedCopyEvalDates.join('\n');
+                document.getElementById('copyEvalDatesHidden').value = datesText;
+                document.getElementById('copyEvalDates').value = datesText;
+                toggleCalendar('copyEval');
+            } else {
+                const datesText = selectedDates.join('\n');
+                document.getElementById('examDatesHidden').value = datesText;
+                document.getElementById('examDates').value = datesText;
+                toggleCalendar('exam');
+            }
+        }
+
+        function parseRoll(roll) {
+            roll = roll.trim().toUpperCase().replace(/\s/g, '');
+            const code = roll.substring(0, 2);
+            const year = roll.substring(2, 4);
+            const num = roll.substring(roll.length - 4);
+            return {
+                original: roll,
+                code: code,
+                college: collegeMap[code] || `College ${code}`,
+                displayPrefix: `${code}${year} CEMMJ NO.`,
+                displayNum: num
+            };
+        }
+
+        function generateSchedule() {
+            const year = document.getElementById('academicYear').value;
+            const subject = document.getElementById('subjectName').value;
+            const venue = document.getElementById('venueName').value;
+            const semester = document.getElementById('semester').value;
+
+            // Get all date types
+            let datesText = document.getElementById('examDates').value || document.getElementById('examDatesHidden').value || selectedDates.join('\n');
+            let dates = datesText.trim().split('\n').filter(d => d);
+
+            let samplePrepText = document.getElementById('samplePrepDates').value || document.getElementById('samplePrepDatesHidden').value || selectedSamplePrepDates.join('\n');
+            let samplePrepDates = samplePrepText.trim().split('\n').filter(d => d);
+
+            let copyEvalText = document.getElementById('copyEvalDates').value || document.getElementById('copyEvalDatesHidden').value || selectedCopyEvalDates.join('\n');
+            let copyEvalDates = copyEvalText.trim().split('\n').filter(d => d);
+
+            const activeTab = document.querySelector('.tab.active').textContent;
+
+            if (dates.length === 0) {
+                if (selectedDates.length > 0) {
+                    dates = selectedDates.slice();
+                } else {
+                    alert('Please select exam dates from the calendar!');
+                    return;
+                }
+            }
+
+            let papers = [];
+            let students = [];
+            let totalCandidature = 0;
+
+            if (activeTab.includes('Excel')) {
+                // EXCEL MODE: No backlog section, data comes from Excel
+                const selectedColleges = Array.from(document.querySelectorAll('#collegesSelection input:checked')).map(cb => cb.value);
+
+                const rollPaperMap = {};
+                filteredData.forEach(row => {
+                    const roll = String(row[columnMapping.roll] || '').trim();
+                    const paperCode = String(row[columnMapping.paper] || '').trim();
+                    const subjCode = String(row[columnMapping.subject] || '').trim();
+
+                    if (roll && paperCode) {
+                        const cleanRoll = roll.toUpperCase().replace(/\s/g, '');
+                        const collegeCode = cleanRoll.substring(0, 2);
+
+                        if (selectedColleges.includes(collegeCode)) {
+                            if (!rollPaperMap[cleanRoll]) rollPaperMap[cleanRoll] = [];
+                            const fullPaper = `${subjCode}-${paperCode}`;
+                            if (!rollPaperMap[cleanRoll].includes(fullPaper)) {
+                                rollPaperMap[cleanRoll].push(fullPaper);
+                            }
+                        }
+                    }
+                });
+
+                papers = Array.from(new Set(Object.values(rollPaperMap).flat())).sort((a, b) => {
+                    const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+                    const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+                    return numA - numB;
+                });
+                students = Object.keys(rollPaperMap).map(parseRoll);
+
+                // Excel: Each student has their papers from Excel (handles backlog automatically)
+                students.forEach(s => {
+                    s.papers = rollPaperMap[s.original] || papers;
+                    totalCandidature += s.papers.length;
+                });
+
+            } else {
+                // MANUAL MODE: With backlog functionality from v.1
+                papers = document.getElementById('paperCodes').value.split('\n').map(p => p.trim()).filter(p => p).sort((a, b) => {
+                    // Extract numbers from paper codes for proper numerical sorting
+                    const numA = parseInt(a.match(/\d+/)?.[0] || '0');
+                    const numB = parseInt(b.match(/\d+/)?.[0] || '0');
+                    return numA - numB;
+                });
+                const rolls = document.getElementById('rollNumbers').value.split(/[\n,]+/).map(r => r.trim()).filter(r => r);
+
+                students = rolls.map(parseRoll);
+                const allPapers = document.querySelector('input[name="allPapers"]:checked').value === 'yes';
+
+                if (!allPapers) {
+                    const backlogMappings = {};
+                    document.querySelectorAll('.backlog-row').forEach(row => {
+                        const rollInput = row.querySelector('.backlog-roll-input');
+                        if (rollInput && rollInput.value.trim()) {
+                            const rollList = rollInput.value.split(/[\n,]+/).map(r => r.trim().toUpperCase().replace(/\s/g, '')).filter(r => r);
+                            const selectedPapers = Array.from(row.querySelectorAll('.paper-check:checked')).map(cb => cb.value);
+                            rollList.forEach(roll => { 
+                                if (roll && selectedPapers.length > 0) backlogMappings[roll] = selectedPapers; 
+                            });
+                        }
+                    });
+
+                    Object.keys(backlogMappings).forEach(roll => {
+                        if (!students.some(s => s.original === roll)) students.push(parseRoll(roll));
+                    });
+
+                    students.forEach(s => {
+                        s.papers = backlogMappings[s.original] || papers;
+                        totalCandidature += s.papers.length;
+                    });
+                } else {
+                    students.forEach(s => {
+                        s.papers = [...papers];
+                        totalCandidature += s.papers.length;
+                    });
+                }
+            }
+
+            const schedule = {};
+            dates.forEach((d, i) => {
+                schedule[d] = { shaded: i % 2 === 1, papers: {} };
+                papers.forEach(p => schedule[d].papers[p] = []);
+            });
+
+            papers.forEach((paper, paperIdx) => {
+                const paperStudents = students.filter(s => s.papers.includes(paper));
+                const byCollege = {};
+                paperStudents.forEach(s => { 
+                    if (!byCollege[s.college]) byCollege[s.college] = []; 
+                    byCollege[s.college].push(s); 
+                });
+
+                const sortedColleges = Object.keys(byCollege).sort();
+                let allPaperStudents = [];
+                sortedColleges.forEach(college => {
+                    byCollege[college].sort((a, b) => a.original.localeCompare(b.original)).forEach(s => {
+                        allPaperStudents.push({...s, collegeName: college});
+                    });
+                });
+
+                allPaperStudents.forEach((student, idx) => {
+                    const date = dates[(idx + paperIdx) % dates.length];
+                    schedule[date].papers[paper].push({...student, paperCode: paper});
+                });
+            });
+
+            scheduleData = {year, subject, venue, semester, dates, papers, schedule, totalCandidature, samplePrepDates, copyEvalDates};
+            render();
+            document.getElementById('previewSection').classList.add('active');
+            document.getElementById('inputSection').style.display = 'none';
+        }
+
+        function render() {
+            const {year, subject, venue, semester, dates, papers, schedule, totalCandidature, samplePrepDates, copyEvalDates} = scheduleData;
+
+            // Helper function to pad numbers with leading zero
+            const pad2 = (num) => String(num).padStart(2, '0');
+
+            let html = `<div style="text-align: center; font-family: 'Times New Roman', serif; margin-bottom: 15px;">
+                <h2 style="font-size: 12pt; font-weight: bold; margin: 0;">SCHEDULE FOR B.Sc. SEMESTER-${semester} PRACTICAL EXAMINATION, ${year}</h2>
+                <p style="font-size: 11pt; margin: 3px 0;">Subject: ${subject}</p>
+                <p style="font-size: 11pt; margin: 3px 0;">Venue: ${venue}</p>
+                <p style="font-size: 11pt; margin: 3px 0;"><strong>Examination:</strong> ${dates[0]} to ${dates[dates.length-1]} <strong>(${pad2(dates.length)} days)</strong></p>`;
+
+            // Add Sample Preparation dates if available
+            if (samplePrepDates && samplePrepDates.length > 0) {
+                html += `<p style="font-size: 11pt; margin: 3px 0;"><strong>Sample Preparation:</strong> ${samplePrepDates[0]} & ${samplePrepDates[samplePrepDates.length-1]} <strong>(${pad2(samplePrepDates.length)} days)</strong></p>`;
+            }
+
+            // Add Copy Evaluation dates if available
+            if (copyEvalDates && copyEvalDates.length > 0) {
+                html += `<p style="font-size: 11pt; margin: 3px 0;"><strong>Copy Evaluation:</strong> ${copyEvalDates[0]} & ${copyEvalDates[copyEvalDates.length-1]} <strong>(${pad2(copyEvalDates.length)} days)</strong></p>`;
+            }
+
+            html += `<p style="font-size: 11pt; margin: 3px 0; color: #2e7d32;"><strong>Total Candidature: ${totalCandidature}</strong></p>
+                <p style="text-align: left; font-weight: bold; margin-top: 10px; font-size: 11pt;">Commencement of Exam:</p>
+            </div>`;
+
+            html += `<table style="border-collapse: collapse; font-family: 'Times New Roman', serif; font-size: 10pt; width: 100%;">`;
+            html += `<thead><tr>
+                <th style="border: 1pt solid windowtext; border-top: 2pt solid windowtext; border-bottom: 2pt solid windowtext; padding: 2pt 4pt; font-weight: bold; text-align: left;">College Name</th>
+                <th style="border: 1pt solid windowtext; border-top: 2pt solid windowtext; border-bottom: 2pt solid windowtext; padding: 2pt 4pt; font-weight: bold; text-align: left;">Roll No.</th>
+                <th style="border: 1pt solid windowtext; border-top: 2pt solid windowtext; border-bottom: 2pt solid windowtext; padding: 2pt 4pt; font-weight: bold; text-align: center;">Paper Code</th>
+                <th style="border: 1pt solid windowtext; border-top: 2pt solid windowtext; border-bottom: 2pt solid windowtext; padding: 2pt 4pt; font-weight: bold; text-align: center;">Date of Exam</th>
+                <th style="border: 1pt solid windowtext; border-top: 2pt solid windowtext; border-bottom: 2pt solid windowtext; padding: 2pt 4pt; font-weight: bold; text-align: center;">Total No. of Candidates</th>
+            </tr></thead>`;
+
+            let grandTotal = 0;
+
+            dates.forEach((date, dIdx) => {
+                const day = schedule[date];
+                const bgColor = day.shaded ? 'background: #f0f0f0;' : '';
+                const dayRows = [];
+                let dayTotalStudents = 0;
+
+                papers.forEach(paper => {
+                    const studs = day.papers[paper];
+                    if (studs.length === 0) return;
+
+                    const byCol = {};
+                    studs.forEach(s => { if (!byCol[s.college]) byCol[s.college] = []; byCol[s.college].push(s); });
+                    const colleges = Object.keys(byCol).sort();
+
+                    colleges.forEach((col, cIdx) => {
+                        dayRows.push({
+                            college: col, 
+                            students: byCol[col], 
+                            paper: paper, 
+                            isFirstPaperRow: cIdx === 0, 
+                            paperRowCount: colleges.length, 
+                            paperTotal: studs.length
+                        });
+                    });
+                    dayTotalStudents += studs.length;
+                });
+
+                grandTotal += dayTotalStudents;
+
+                dayRows.forEach((row, rowIdx) => {
+                    const isLastRow = rowIdx === dayRows.length - 1;
+                    const isFirstRow = rowIdx === 0;
+                    const prefix = row.students[0].displayPrefix;
+                    const nums = row.students.map(s => s.displayNum).join(', ');
+                    const bottomBorder = isLastRow ? 'border-bottom: 3pt double windowtext;' : '';
+
+                    html += `<tr style="${bgColor}">`;
+                    html += `<td style="border: 1pt solid windowtext; ${bottomBorder} padding: 2pt 4pt; vertical-align: middle;">${row.college}</td>`;
+                    html += `<td style="border: 1pt solid windowtext; ${bottomBorder} padding: 2pt 4pt; font-size: 10pt; vertical-align: middle;"><b>${prefix}</b> ${nums}</td>`;
+
+                    if (row.isFirstPaperRow) {
+                        const paperBottomBorder = isLastRow ? 'border-bottom: 3pt double windowtext;' : '';
+                        html += `<td rowspan="${row.paperRowCount}" style="border: 1pt solid windowtext; ${paperBottomBorder} padding: 2pt 4pt; text-align: center; vertical-align: middle;">${row.paper}<br>(${row.paperTotal})</td>`;
+                    }
+
+                    if (isFirstRow) {
+                        html += `<td rowspan="${dayRows.length}" style="border: 1pt solid windowtext; ${bottomBorder} padding: 2pt 4pt; text-align: center; vertical-align: middle; font-weight: bold;">${date}</td>`;
+                        html += `<td rowspan="${dayRows.length}" style="border: 1pt solid windowtext; ${bottomBorder} padding: 2pt 4pt; text-align: center; vertical-align: middle; font-weight: bold;">${dayTotalStudents} Nos</td>`;
+                    }
+
+                    html += `</tr>`;
+                });
+            });
+
+            html += `</table>
+                <p style="text-align: right; margin-top: 10px; font-weight: bold; font-size: 11pt; font-family: 'Times New Roman', serif;">Total Candidates = ${grandTotal}</p>
+                <p style="text-align: right; margin-top: 5px; font-weight: bold; font-size: 11pt; font-family: 'Times New Roman', serif; color: #2e7d32;">Total Candidature = ${totalCandidature}</p>`;
+
+            document.getElementById('scheduleOutput').innerHTML = html;
+        }
+
+        function exportToWord() {
+            const content = document.getElementById('scheduleOutput').innerHTML;
+            const {year, semester} = scheduleData;
+
+            const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset="utf-8"><title>Schedule ${year}</title>
+<style>@page Section1 {size: 595.45pt 841.7pt; margin: 1cm 1cm 1cm 1cm;} div.Section1 {page: Section1;} table {mso-table-layout-alt: auto;}</style>
+</head><body><div class="Section1">${content}</div></body></html>`;
+
+            const blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Exam_Schedule_Sem${semester}_${year}.doc`;
+            link.click();
+        }
+
+        function resetForm() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>
